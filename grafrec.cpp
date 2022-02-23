@@ -3,93 +3,58 @@
 #include <algorithm>
 #include <cstdlib>
 #include <math.h>
+#include <fstream>
 
+using namespace std;
 
-double rk4(double ta, double tb, double h, std::vector<double> & y, double W);
-double f(double t, const std::vector<double> & y, int id, double W);
-
-int main (void)
+double f1(double t, double x, double v)
 {
-  const double N  = 2;
-  const double TA = 0.001;
-  const double TB = 0.999;
-  const double H  = 0.01;
-  const double HW = 0.001; 
-  double W = 0.0; // omega, in rad/s
-  std::vector<double> y = {0, 1.0}; // {x0, v0}
+  return(v);
+}
 
-  for (int i = 0; i < 20000; ++i)
+double f2(double t, double x, double v, double k)
+{
+  return(( 100*x-k*k)*v);
+}
+
+double r(double t0, double x0, double v0, double t, double h, double k)
+{ 
+  int n = (int)((t-t0)/h);
+
+  double k1x, k1v, k2x, k2v, k3x, k3v, k4x, k4v;
+
+  for (int i=1; i<=n; i++)
+  {
+    k1x = f1(t0, x0, v0);
+    k1v = f2(t0, x0, v0, k);
+    k2x = f1(t0 + 0.5*h, x0 + 0.5*h*k1x, v0 + 0.5*h*k1v);
+    k2v = f2(t0 + 0.5*h, x0 + 0.5*h*k1x, v0 + 0.5*h*k1v, k);
+    k3x = f1(t0 + 0.5*h, x0 + 0.5*h*k2x, v0 + 0.5*h*k2v);
+    k3v = f2(t0 + 0.5*h, x0 + 0.5*h*k2x, v0 + 0.5*h*k2v, k);
+    k4x = f1(t0 + h, x0 + h*k3x, v0 + h*k3v);
+    k4v = f2(t0 + h, x0 + h*k3x, v0 + h*k3v, k);
+
+    v0 = v0 + h*(1.0/6.0)*(k1v + 2*k2v + 2*k3v + k4v);
+    x0 = x0 + h*(1.0/6.0)*(k1x + 2*k2x + 2*k3x + k4x);
+    t0 = t0 + h;
+  }
+
+  return x0;
+}
+
+int main()
+{
+  ofstream file;
+  file.open("Disparo.txt");
+    double t0 = 0, x0 = 0, v0 = 1, h = 0.001, eps = 0.001, k = 0;
+
+    do
     {
-      std::cout << W << '\t' << rk4(TA,TB,H,y,W) << '\n';
-
-      W = W + HW;
-      y[0]=0;
-      y[1]=1.0;
+      file << k << " " << r(t0, x0, v0, 1, h, k) << endl;
+      k = k + 0.001;
     }
+    while(k<=20);
+  file.close();
 
   return 0;
-}
-
-double rk4(double ta, double tb, double h, std::vector<double> & y,double W)
-{
-  std::vector<double> k1, k2, k3, k4, aux;
-  k1.resize(y.size());
-  k2.resize(y.size());
-  k3.resize(y.size());
-  k4.resize(y.size());
-  aux.resize(y.size());
-
-  const int N = (tb-ta)/h;
-  for (int nt = 0; nt < N; ++nt) {
-    double t = ta + h*nt;
-    // k1
-    for(int ii = 0; ii < y.size(); ++ii) {
-      k1[ii] = h*f(t, y, ii, W);
-    }
-    // k2 aux
-    for(int ii = 0; ii < y.size(); ++ii) {
-      aux[ii] = y[ii] + k1[ii]/2;
-    }
-    //k2
-    for(int ii = 0; ii < y.size(); ++ii) {
-      k2[ii] = h*f(t + h/2, aux, ii, W);
-    }
-    // k3 aux
-    for(int ii = 0; ii < y.size(); ++ii) {
-      aux[ii] = y[ii] + k2[ii]/2;
-    }
-    //k3
-    for(int ii = 0; ii < y.size(); ++ii) {
-      k3[ii] = h*f(t + h/2, aux, ii, W);
-    }
-    // k4 aux
-    for(int ii = 0; ii < y.size(); ++ii) {
-      aux[ii] = y[ii] + k3[ii];
-    }
-    //k4
-    for(int ii = 0; ii < y.size(); ++ii) {
-      k4[ii] = h*f(t + h, aux, ii, W);
-    }
-    // write new y
-    for(int ii = 0; ii < y.size(); ++ii) {
-      y[ii] = y[ii] + (k1[ii] + 2*k2[ii] + 2*k3[ii] + k4[ii])/6.0;
-    }
-    //std::cout << t << "\t" << y[0] << "\t" << y[1] << std::endl;
-  }
-  return y[0];
-}
-
-
-double f(double t, const std::vector<double> & y, int id, double W)
-{
-  if (0 == id) {
-    return y[1];
-  }
-  else if (1 == id) {
-    return (100*std::exp(-100*(1.0-2.0*t)*(1.0-2.0*t))-W*W)*y[0];// - 0.23*y[1];
-  }
-  else {
-    std::cerr << "ERROR!!!!!!!! Id does not exists -> " << id << std::endl;
-    exit(1);
-  }
 }
